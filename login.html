@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Weight We Carry - Login</title>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to right, #e8b4b8, #ffffff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+      text-align: center;
+      width: 350px;
+    }
+    h2 {
+      color: #3e497a;
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background: #3e497a;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #2c3e50;
+    }
+    p {
+      color: #3e497a;
+      margin-top: 15px;
+    }
+    a {
+      color: #e5989b;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2 id="formTitle">Login</h2>
+
+    <div id="registerFields" style="display: none;">
+      <input type="text" id="regUsername" placeholder="Choose a username" required />
+    </div>
+
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="password" id="password" placeholder="Password" required />
+
+    <button id="submitBtn">Login</button>
+    <p id="toggleText">
+      Don’t have an account? <a href="#" id="toggleLink">Register here</a>
+    </p>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "./firebase.js";
+    import {
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      doc,
+      setDoc,
+      getDoc,
+      query,
+      collection,
+      where,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const regUsernameInput = document.getElementById('regUsername');
+    const submitBtn = document.getElementById('submitBtn');
+    const formTitle = document.getElementById('formTitle');
+    const toggleLink = document.getElementById('toggleLink');
+    const registerFields = document.getElementById('registerFields');
+    let isLogin = true;
+
+    toggleLink.addEventListener('click', () => {
+      isLogin = !isLogin;
+      formTitle.textContent = isLogin ? "Login" : "Register";
+      submitBtn.textContent = isLogin ? "Login" : "Register";
+      registerFields.style.display = isLogin ? "none" : "block";
+      toggleLink.textContent = isLogin ? "Register here" : "Login here";
+      document.getElementById('toggleText').firstChild.textContent =
+        isLogin ? "Don’t have an account? " : "Already have an account? ";
+    });
+
+    submitBtn.addEventListener('click', async () => {
+      const username = usernameInput.value.trim().toLowerCase();
+      const password = passwordInput.value;
+      const regUsername = regUsernameInput.value.trim().toLowerCase();
+
+      if (!username || !password) return alert("Please fill out all fields.");
+
+      try {
+        if (isLogin) {
+          // 🔹 Login flow
+          const q = query(collection(db, "users"), where("username", "==", username));
+          const snapshot = await getDocs(q);
+          if (snapshot.empty) return alert("No user found.");
+          const userData = snapshot.docs[0].data();
+          await signInWithEmailAndPassword(auth, userData.email, password);
+        } else {
+          // 🔹 Register flow
+          if (!regUsername) return alert("Please choose a username.");
+          // Check if username exists
+          const q = query(collection(db, "users"), where("username", "==", regUsername));
+          const snapshot = await getDocs(q);
+          if (!snapshot.empty) return alert("Username already taken.");
+
+          // Dummy email for Firebase Auth
+          const fakeEmail = `${regUsername}@anon.com`;
+          const userCred = await createUserWithEmailAndPassword(auth, fakeEmail, password);
+
+          await setDoc(doc(db, "users", userCred.user.uid), {
+            username: regUsername,
+            email: fakeEmail
+          });
+          alert("Account created successfully!");
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) window.location.href = "yoyo.html";
+    });
+  </script>
+</body>
+</html>
